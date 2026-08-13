@@ -1,0 +1,36 @@
+"""Application configuration loaded from environment variables (backend/.env)."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+@dataclass(frozen=True)
+class Settings:
+    saic_username: str | None
+    saic_password: str | None
+    saic_region: str
+    database_path: str
+
+
+def get_settings() -> Settings:
+    return Settings(
+        saic_username=os.environ.get("SAIC_USERNAME") or None,
+        saic_password=os.environ.get("SAIC_PASSWORD") or None,
+        saic_region=os.environ.get("SAIC_REGION", "eu"),
+        database_path=os.environ.get("DATABASE_PATH", "data/mgs5.db"),
+    )
+
+
+def resolve_database_path(database_path: str) -> Path:
+    """Resolve DATABASE_PATH relative to the backend/ working directory."""
+    path = Path(database_path)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path
