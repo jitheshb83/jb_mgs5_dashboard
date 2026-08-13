@@ -24,6 +24,7 @@ to git — add `backend/data/*.db` to `.gitignore`.
 | tyre_pressure_rr | REAL | |
 | latitude | REAL | Nullable, only if location view is in scope |
 | longitude | REAL | Nullable |
+| doors_json | TEXT | Nullable. JSON-encoded `doors` object (lock + door + window + bonnet/boot/sunroof state) per `api_contract.md`'s Snapshot shape. Decoded from `basicVehicleStatus` at insert time and stored per-snapshot (unlike the advanced-info/battery-usage pages, which decode on demand from `raw_json` and aren't stored separately) so it's available in `/api/history` rows, not just the latest. |
 | raw_json | TEXT NOT NULL | Full raw SAIC API response — never dropped, allows re-parsing if field mappings change |
 
 Index: `fetched_at` (for history range queries).

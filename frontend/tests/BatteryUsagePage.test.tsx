@@ -1,0 +1,80 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { BatteryUsagePage } from "../src/components/BatteryUsagePage";
+import * as api from "../src/lib/api";
+
+// Mock the fetch-based api client so the test never hits a real network/backend.
+vi.mock("../src/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("../src/lib/api")>("../src/lib/api");
+  return { ...actual, getBatteryUsage: vi.fn() };
+});
+
+describe("BatteryUsagePage", () => {
+  beforeEach(() => {
+    vi.mocked(api.getBatteryUsage).mockReset();
+  });
+
+  it("renders a stat card per field with real data", async () => {
+    vi.mocked(api.getBatteryUsage).mockResolvedValue({
+      fetched_at: "2026-08-12T14:30:00Z",
+      battery_usage: {
+        total_battery_capacity_kwh: 61.8,
+        power_usage_today_kwh: 4.2,
+        power_usage_since_last_charge_kwh: 12.6,
+        last_charge_added_kwh: 38.4,
+        current_energy_kwh: 34.6,
+        mileage_today_km: 21.3,
+        mileage_since_last_charge_km: 143.7,
+      },
+    });
+
+    render(<BatteryUsagePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("61.8 kWh")).toBeTruthy();
+    });
+
+    expect(screen.getByText("4.2 kWh")).toBeTruthy();
+    expect(screen.getByText("12.6 kWh")).toBeTruthy();
+    expect(screen.getByText("38.4 kWh")).toBeTruthy();
+    expect(screen.getByText("34.6 kWh")).toBeTruthy();
+    expect(screen.getByText("21.3 km")).toBeTruthy();
+    expect(screen.getByText("143.7 km")).toBeTruthy();
+  });
+
+  it("renders placeholders for an all-null battery_usage response without crashing", async () => {
+    vi.mocked(api.getBatteryUsage).mockResolvedValue({
+      fetched_at: "2026-08-12T14:30:00Z",
+      battery_usage: {
+        total_battery_capacity_kwh: null,
+        power_usage_today_kwh: null,
+        power_usage_since_last_charge_kwh: null,
+        last_charge_added_kwh: null,
+        current_energy_kwh: null,
+        mileage_today_km: null,
+        mileage_since_last_charge_km: null,
+      },
+    });
+
+    render(<BatteryUsagePage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("—").length).toBe(7);
+    });
+    expect(screen.queryByText(/null/i)).toBeNull();
+    expect(screen.queryByText(/undefined/i)).toBeNull();
+  });
+
+  it("treats a 404 (no snapshot yet) as a no-data state, not an error", async () => {
+    vi.mocked(api.getBatteryUsage).mockRejectedValue(
+      new api.ApiRequestError(404, { error: "no_snapshot", detail: "No snapshot exists yet." }),
+    );
+
+    render(<BatteryUsagePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no battery usage data available yet/i)).toBeTruthy();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});

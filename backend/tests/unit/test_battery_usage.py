@@ -1,0 +1,87 @@
+"""Unit tests for the battery-usage correction-factor math (GET /api/latest/battery-usage).
+
+Per docs/architecture/api_contract.md: correction_factor = battery_nameplate_kwh /
+total_battery_capacity_kwh (1.0 if the vehicle didn't report a capacity, or reported <= 0),
+applied as round((correction_factor * raw_value) / 10.0, 2) to the kWh fields. Mileage fields
+are raw / 10.0, validated 0 <= raw <= 65535.
+"""
+
+from __future__ import annotations
+
+from app.services.battery_usage import decode_battery_usage
+
+
+def _raw(rvs: dict[str, object] | None) -> dict[str, object]:
+    return {"charging_management_data": {"rvsChargeStatus": rvs}}
+
+
+def test_capacity_present_applies_correction_factor() -> None:
+    raw = _raw(
+        {
+            "totalBatteryCapacity": 618,  # 61.8 kWh self-reported
+            "powerUsageOfDay": 420,
+            "powerUsageSinceLastCharge": 1_260,
+            "lastChargeEndingPower": 3_840,
+            "realtimePower": 3_440,  # current battery energy content, not a power rate
+            "mileageOfDay": 213,
+            "mileageSinceLastCharge": 1_437,
+        }
+    )
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result["total_battery_capacity_kwh"] == 61.8
+    # correction_factor = 62.1 / 61.8
+    assert result["power_usage_today_kwh"] == 42.2
+    assert result["power_usage_since_last_charge_kwh"] == 126.61
+    assert result["last_charge_added_kwh"] == 385.86
+    assert result["current_energy_kwh"] == 345.67
+    assert result["mileage_today_km"] == 21.3
+    assert result["mileage_since_last_charge_km"] == 143.7
+
+
+def test_capacity_absent_uses_correction_factor_of_one() -> None:
+    raw = _raw({"totalBatteryCapacity": None, "powerUsageOfDay": 420})
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result["total_battery_capacity_kwh"] is None
+    # No correction applied -- raw value / 10.0 directly.
+    assert result["power_usage_today_kwh"] == 42.0
+
+
+def test_capacity_reported_as_zero_uses_correction_factor_of_one() -> None:
+    raw = _raw({"totalBatteryCapacity": 0, "powerUsageOfDay": 420})
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result["total_battery_capacity_kwh"] is None
+    assert result["power_usage_today_kwh"] == 42.0
+
+
+def test_capacity_reported_as_negative_uses_correction_factor_of_one() -> None:
+    raw = _raw({"totalBatteryCapacity": -5, "powerUsageOfDay": 420})
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result["total_battery_capacity_kwh"] is None
+    assert result["power_usage_today_kwh"] == 42.0
+
+
+def test_mileage_out_of_range_is_null() -> None:
+    raw = _raw({"mileageOfDay": 65_536, "mileageSinceLastCharge": -1})
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result["mileage_today_km"] is None
+    assert result["mileage_since_last_charge_km"] is None
+
+
+def test_mileage_boundary_65535_is_valid() -> None:
+    raw = _raw({"mileageOfDay": 65_535})
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result["mileage_today_km"] == 6553.5
+
+
+def test_missing_rvs_charge_status_yields_all_null() -> None:
+    raw: dict[str, object] = {"charging_management_data": {"rvsChargeStatus": None}}
+    result = decode_battery_usage(raw, battery_nameplate_kwh=62.1)
+    assert result == {
+        "total_battery_capacity_kwh": None,
+        "power_usage_today_kwh": None,
+        "power_usage_since_last_charge_kwh": None,
+        "last_charge_added_kwh": None,
+        "current_energy_kwh": None,
+        "mileage_today_km": None,
+        "mileage_since_last_charge_km": None,
+    }
