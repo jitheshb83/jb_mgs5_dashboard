@@ -5,19 +5,21 @@ import { mockSnapshotRealistic, mockSnapshotAllNull } from "../src/hooks/mockDat
 import * as api from "../src/lib/api";
 
 // Dashboard now also renders trend charts backed by useHistory() -> GET
-// /api/history. Mock the api client so tests never hit a real network/backend
-// (same pattern as BatteryUsagePage.test.tsx) -- an empty history is enough
-// for these tests since chart-specific rendering is covered separately in
+// /api/history and useSoh() -> GET /api/soh. Mock the api client so tests never hit a
+// real network/backend (same pattern as BatteryUsagePage.test.tsx) -- empty history/soh
+// data is enough for these tests since chart-specific rendering is covered separately in
 // tests/charts/TrendCharts.test.tsx.
 vi.mock("../src/lib/api", async () => {
   const actual = await vi.importActual<typeof import("../src/lib/api")>("../src/lib/api");
-  return { ...actual, getHistory: vi.fn() };
+  return { ...actual, getHistory: vi.fn(), getSoh: vi.fn() };
 });
 
 describe("Dashboard", () => {
   beforeEach(() => {
     vi.mocked(api.getHistory).mockReset();
     vi.mocked(api.getHistory).mockResolvedValue({ snapshots: [] });
+    vi.mocked(api.getSoh).mockReset();
+    vi.mocked(api.getSoh).mockResolvedValue({ estimates: [], nameplate_usable_kwh: 62.1 });
   });
 
   it("renders stat cards with a realistic snapshot", async () => {
@@ -41,6 +43,7 @@ describe("Dashboard", () => {
     expect(screen.getByRole("img", { name: /diagram of the car/i })).toBeTruthy();
 
     await waitFor(() => expect(api.getHistory).toHaveBeenCalled());
+    await waitFor(() => expect(api.getSoh).toHaveBeenCalled());
   });
 
   it("renders placeholders for an all-null snapshot without crashing", async () => {
@@ -52,6 +55,7 @@ describe("Dashboard", () => {
     expect(screen.queryByText(/undefined/i)).toBeNull();
 
     await waitFor(() => expect(api.getHistory).toHaveBeenCalled());
+    await waitFor(() => expect(api.getSoh).toHaveBeenCalled());
   });
 
   it("renders placeholders without crashing when snapshot itself is null", async () => {
@@ -62,5 +66,6 @@ describe("Dashboard", () => {
     expect(screen.queryByText(/undefined/i)).toBeNull();
 
     await waitFor(() => expect(api.getHistory).toHaveBeenCalled());
+    await waitFor(() => expect(api.getSoh).toHaveBeenCalled());
   });
 });

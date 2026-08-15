@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Snapshot } from "../lib/types";
 import { formatNumber } from "../lib/format";
 import { useHistory } from "../hooks/useHistory";
+import { useSoh } from "../hooks/useSoh";
 import { SocCard } from "./SocCard";
 import { RangeCard } from "./RangeCard";
 import { ChargingCard } from "./ChargingCard";
@@ -14,6 +15,7 @@ import { ChartCard } from "../charts/ChartCard";
 import { SocTrendChart } from "../charts/SocTrendChart";
 import { RangeTrendChart } from "../charts/RangeTrendChart";
 import { VoltageTrendChart } from "../charts/VoltageTrendChart";
+import { SohTrendChart } from "../charts/SohTrendChart";
 
 interface DashboardProps {
   snapshot: Snapshot | null;
@@ -21,18 +23,20 @@ interface DashboardProps {
 
 /**
  * Current-state dashboard grid covering every requirements.md 4.4 field
- * except vehicle location/map (deferred to v2) and SOH (no endpoint yet).
+ * except vehicle location/map (deferred to v2).
  * `snapshot` itself may be null (e.g. before any refresh has happened) —
  * every field read below falls back to null so cards render placeholders
  * instead of crashing.
  */
 export function Dashboard({ snapshot }: DashboardProps) {
   const { snapshots: history, isLoading: historyLoading, error: historyError } = useHistory();
+  const { estimates: sohEstimates, isLoading: sohLoading, error: sohError } = useSoh();
 
-  // GET /api/history returns newest-first (see backend/src/app/db/repository.py's
-  // `ORDER BY fetched_at DESC`) -- reverse to chronological (oldest-first) so
-  // trend charts read left-to-right as time moving forward.
+  // GET /api/history and GET /api/soh both return newest-first (see
+  // backend/src/app/db/repository.py's `ORDER BY ... DESC`) -- reverse to chronological
+  // (oldest-first) so trend charts read left-to-right as time moving forward.
   const chronological = useMemo(() => [...history].reverse(), [history]);
+  const sohChronological = useMemo(() => [...sohEstimates].reverse(), [sohEstimates]);
 
   return (
     <div className="space-y-10">
@@ -83,10 +87,22 @@ export function Dashboard({ snapshot }: DashboardProps) {
           <ChartCard title="Estimated Range" className="lg:col-span-2">
             <RangeTrendChart snapshots={chronological} isLoading={historyLoading} />
           </ChartCard>
+          <ChartCard
+            title="Estimated Battery SOH"
+            className="lg:col-span-2"
+            description="Directional estimate based on observed full-charge cycles — not a manufacturer-verified figure. See docs/planning/soh_methodology.md."
+          >
+            <SohTrendChart estimates={sohChronological} isLoading={sohLoading} />
+          </ChartCard>
         </div>
         {historyError ? (
           <p role="alert" className="text-sm text-red-600">
             {historyError}
+          </p>
+        ) : null}
+        {sohError ? (
+          <p role="alert" className="text-sm text-red-600">
+            {sohError}
           </p>
         ) : null}
       </Section>

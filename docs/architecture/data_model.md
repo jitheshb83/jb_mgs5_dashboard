@@ -52,7 +52,7 @@ Stored as TEXT and cast on read — keeps the table generic, avoids schema migra
 | cycle_end_snapshot_id | INTEGER FK → car_snapshot.id | End of the full-charge cycle used |
 | soh_pct | REAL | Computed estimate |
 | usable_kwh_estimate | REAL | Computed estimate |
-| basis | TEXT | e.g. "soc_delta_fallback" or "current_integration" — see `soh_methodology.md` |
+| basis | TEXT | v1's only value: "current_energy_kwh_delta" — see `soh_methodology.md`'s 2026-08-15 correction (the originally-proposed "soc_delta_fallback" was mathematically circular and was never implemented) |
 
 ## Migration approach
 

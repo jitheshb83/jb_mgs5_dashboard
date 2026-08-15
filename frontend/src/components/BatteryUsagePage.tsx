@@ -29,6 +29,9 @@ export function BatteryUsagePage({ refreshKey }: BatteryUsagePageProps) {
     );
   }
 
+  const estimated = new Set(batteryUsage.estimated_fields);
+  const estimatedNote = "Estimated from observed history — the vehicle didn't report this directly.";
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-500">As of {formatDateTime(fetchedAt)}</p>
@@ -36,10 +39,12 @@ export function BatteryUsagePage({ refreshKey }: BatteryUsagePageProps) {
         <StatCard
           label="Total Battery Capacity"
           value={formatNumber(batteryUsage.total_battery_capacity_kwh, { decimals: 1, unit: " kWh" })}
+          sublabel={estimated.has("total_battery_capacity_kwh") ? estimatedNote : undefined}
         />
         <StatCard
           label="Power Usage Today"
           value={formatNumber(batteryUsage.power_usage_today_kwh, { decimals: 1, unit: " kWh" })}
+          sublabel={estimated.has("power_usage_today_kwh") ? estimatedNote : undefined}
         />
         <StatCard
           label="Power Usage Since Last Charge"
@@ -47,10 +52,12 @@ export function BatteryUsagePage({ refreshKey }: BatteryUsagePageProps) {
             decimals: 1,
             unit: " kWh",
           })}
+          sublabel={estimated.has("power_usage_since_last_charge_kwh") ? estimatedNote : undefined}
         />
         <StatCard
           label="Last Charge Added"
           value={formatNumber(batteryUsage.last_charge_added_kwh, { decimals: 1, unit: " kWh" })}
+          sublabel={estimated.has("last_charge_added_kwh") ? estimatedNote : undefined}
         />
         <StatCard
           label="Current Energy"
@@ -59,6 +66,7 @@ export function BatteryUsagePage({ refreshKey }: BatteryUsagePageProps) {
         <StatCard
           label="Mileage Today"
           value={formatNumber(batteryUsage.mileage_today_km, { decimals: 1, unit: " km" })}
+          sublabel={estimated.has("mileage_today_km") ? estimatedNote : undefined}
         />
         <StatCard
           label="Mileage Since Last Charge"
@@ -66,6 +74,7 @@ export function BatteryUsagePage({ refreshKey }: BatteryUsagePageProps) {
             decimals: 1,
             unit: " km",
           })}
+          sublabel={estimated.has("mileage_since_last_charge_km") ? estimatedNote : undefined}
         />
       </div>
     </div>

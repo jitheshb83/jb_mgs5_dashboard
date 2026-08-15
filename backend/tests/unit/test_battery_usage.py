@@ -8,7 +8,7 @@ are raw / 10.0, validated 0 <= raw <= 65535.
 
 from __future__ import annotations
 
-from app.services.battery_usage import decode_battery_usage
+from app.services.battery_usage import decode_battery_usage, decode_uncorrected_current_energy_kwh
 
 
 def _raw(rvs: dict[str, object] | None) -> dict[str, object]:
@@ -85,3 +85,23 @@ def test_missing_rvs_charge_status_yields_all_null() -> None:
         "mileage_today_km": None,
         "mileage_since_last_charge_km": None,
     }
+
+
+def test_decode_uncorrected_current_energy_kwh_ignores_reported_capacity() -> None:
+    """Per soh.py's use of this function: unlike decode_battery_usage's current_energy_kwh,
+    this must NOT apply the nameplate correction_factor -- a cycle's start/end snapshots can
+    each report a different totalBatteryCapacity, and soh.py needs a true delta between two
+    readings of the same physical quantity, not two differently-rescaled numbers."""
+    raw = _raw({"totalBatteryCapacity": 618, "realtimePower": 3_440})
+    # Same raw realtimePower regardless of what totalBatteryCapacity says -- no correction_factor.
+    assert decode_uncorrected_current_energy_kwh(raw) == 344.0
+
+
+def test_decode_uncorrected_current_energy_kwh_out_of_range_is_null() -> None:
+    raw = _raw({"realtimePower": 65_536})
+    assert decode_uncorrected_current_energy_kwh(raw) is None
+
+
+def test_decode_uncorrected_current_energy_kwh_missing_rvs_is_null() -> None:
+    raw: dict[str, object] = {"charging_management_data": {"rvsChargeStatus": None}}
+    assert decode_uncorrected_current_energy_kwh(raw) is None

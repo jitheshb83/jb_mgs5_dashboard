@@ -200,6 +200,7 @@ class BatteryUsage(BaseModel):
     current_energy_kwh: float | None = None
     mileage_today_km: float | None = None
     mileage_since_last_charge_km: float | None = None
+    estimated_fields: list[str] = Field(default_factory=list)
 
 
 class BatteryUsageResponse(BaseModel):
@@ -209,3 +210,19 @@ class BatteryUsageResponse(BaseModel):
     @field_serializer("fetched_at")
     def _serialize_fetched_at(self, value: datetime) -> str:
         return _iso_z(value)
+
+
+class SohEstimateItem(BaseModel):
+    computed_at: datetime
+    soh_pct: float
+    usable_kwh_estimate: float
+    basis: str
+
+    @field_serializer("computed_at")
+    def _serialize_computed_at(self, value: datetime) -> str:
+        return _iso_z(value)
+
+
+class SohResponse(BaseModel):
+    estimates: list[SohEstimateItem]
+    nameplate_usable_kwh: float

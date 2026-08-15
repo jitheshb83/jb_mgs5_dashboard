@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import advanced, battery_usage, history, latest, refresh, settings
+from app.api import advanced, battery_usage, history, latest, refresh, settings, soh
 from app.config import get_settings, resolve_database_path
 from app.db.database import init_db
 from app.models.schemas import ErrorResponse
@@ -62,3 +62,4 @@ app.include_router(advanced.router)
 app.include_router(battery_usage.router)
 app.include_router(history.router)
 app.include_router(settings.router)
+app.include_router(soh.router)
