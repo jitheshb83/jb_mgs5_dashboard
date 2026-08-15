@@ -14,6 +14,7 @@ import type {
   LatestResponse,
   RefreshResponse,
   Settings,
+  SohResponse,
   ApiErrorBody,
 } from "./types";
 
@@ -93,4 +94,10 @@ export async function getAdvanced(): Promise<AdvancedResponse> {
 export async function getBatteryUsage(): Promise<BatteryUsageResponse> {
   const res = await fetch(`${BASE_URL}/api/latest/battery-usage`);
   return handleResponse<BatteryUsageResponse>(res);
+}
+
+/** GET /api/soh — derived battery SOH estimate trend, one entry per detected full-charge cycle. */
+export async function getSoh(): Promise<SohResponse> {
+  const res = await fetch(`${BASE_URL}/api/soh`);
+  return handleResponse<SohResponse>(res);
 }

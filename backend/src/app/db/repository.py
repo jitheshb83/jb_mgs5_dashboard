@@ -87,6 +87,56 @@ def get_snapshots(
     ).fetchall()
 
 
+def get_all_snapshots_ascending(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Full car_snapshot history, oldest first -- used by soh.py's full-charge-cycle
+    detection, which needs to scan is_charging/soc_pct transitions in order."""
+    return conn.execute(
+        "SELECT id, fetched_at, soc_pct, is_charging, raw_json FROM car_snapshot "
+        "ORDER BY fetched_at ASC, id ASC"
+    ).fetchall()
+
+
+def get_existing_soh_cycle_end_ids(conn: sqlite3.Connection) -> set[int]:
+    """Already-recorded cycle end points -- soh.py uses this to avoid re-detecting
+    (and re-inserting a duplicate row for) a full-charge cycle already stored."""
+    rows = conn.execute("SELECT cycle_end_snapshot_id FROM soh_estimate").fetchall()
+    return {row["cycle_end_snapshot_id"] for row in rows}
+
+
+def insert_soh_estimate(
+    conn: sqlite3.Connection,
+    *,
+    computed_at: datetime,
+    cycle_start_snapshot_id: int,
+    cycle_end_snapshot_id: int,
+    soh_pct: float,
+    usable_kwh_estimate: float,
+    basis: str,
+) -> None:
+    conn.execute(
+        "INSERT INTO soh_estimate "
+        "(computed_at, cycle_start_snapshot_id, cycle_end_snapshot_id, soh_pct, "
+        "usable_kwh_estimate, basis) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            computed_at.isoformat(),
+            cycle_start_snapshot_id,
+            cycle_end_snapshot_id,
+            soh_pct,
+            usable_kwh_estimate,
+            basis,
+        ),
+    )
+    conn.commit()
+
+
+def get_soh_estimates(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Most recent first -- same convention as get_snapshots/get_latest_snapshot."""
+    return conn.execute(
+        "SELECT computed_at, soh_pct, usable_kwh_estimate, basis FROM soh_estimate "
+        "ORDER BY computed_at DESC, id DESC"
+    ).fetchall()
+
+
 def get_all_settings(conn: sqlite3.Connection) -> dict[str, str]:
     rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
     return {row["key"]: row["value"] for row in rows}

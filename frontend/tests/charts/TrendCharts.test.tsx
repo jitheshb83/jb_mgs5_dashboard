@@ -3,8 +3,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { SocTrendChart } from "../../src/charts/SocTrendChart";
 import { RangeTrendChart } from "../../src/charts/RangeTrendChart";
 import { VoltageTrendChart } from "../../src/charts/VoltageTrendChart";
+import { SohTrendChart } from "../../src/charts/SohTrendChart";
 import { mockSnapshotAllNull, mockSnapshotRealistic } from "../../src/hooks/mockData";
-import type { HistorySnapshot, Snapshot } from "../../src/lib/types";
+import type { HistorySnapshot, Snapshot, SohEstimateItem } from "../../src/lib/types";
 
 const BASE_TIME = new Date("2026-08-01T00:00:00Z").getTime();
 
@@ -97,6 +98,44 @@ describe("VoltageTrendChart", () => {
 
   it("shows a loading label distinct from the empty state when isLoading is true", () => {
     render(<VoltageTrendChart snapshots={[]} isLoading />);
+    expect(screen.getByText(/loading/i)).toBeTruthy();
+  });
+});
+
+function buildSohEstimates(count: number): SohEstimateItem[] {
+  return Array.from({ length: count }, (_, i) => ({
+    computed_at: new Date(BASE_TIME + i * 86_400_000).toISOString(),
+    soh_pct: 100 - i * 0.5,
+    usable_kwh_estimate: 62.1 - i * 0.3,
+    basis: "current_energy_kwh_delta",
+  }));
+}
+
+describe("SohTrendChart", () => {
+  it("shows a not-enough-data empty state with 0 estimates", () => {
+    render(<SohTrendChart estimates={[]} />);
+    expect(screen.getByText(/not enough data yet/i)).toBeTruthy();
+  });
+
+  it("shows a not-enough-data empty state below the minimum estimate count (1-2 points)", () => {
+    // Per soh_methodology.md's known limitations: a single data point is noise, not signal.
+    render(<SohTrendChart estimates={buildSohEstimates(2)} />);
+    expect(screen.getByText(/not enough data yet/i)).toBeTruthy();
+  });
+
+  it("renders the chart once at least 3 estimates exist, and hover doesn't crash", () => {
+    const { container } = render(<SohTrendChart estimates={buildSohEstimates(3)} />);
+    expect(container.querySelector(".recharts-surface")).toBeTruthy();
+    expect(() => hoverChart(container)).not.toThrow();
+  });
+
+  it("renders without crashing with many points", () => {
+    const { container } = render(<SohTrendChart estimates={buildSohEstimates(20)} />);
+    expect(container.querySelector(".recharts-surface")).toBeTruthy();
+  });
+
+  it("shows a loading label distinct from the empty state when isLoading is true", () => {
+    render(<SohTrendChart estimates={[]} isLoading />);
     expect(screen.getByText(/loading/i)).toBeTruthy();
   });
 });

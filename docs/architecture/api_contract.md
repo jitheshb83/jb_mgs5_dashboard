@@ -74,27 +74,37 @@ wrapping each entry, consistent with the existing pattern, rather than adding `f
 
 ## GET /api/soh
 
-**Status: NOT YET IMPLEMENTED.** No route exists for this endpoint (nothing is registered in
-`main.py`) and no frontend code calls it. It was originally planned as its own implementation
-phase; other requested features (doors/locks, advanced info, battery usage, trend charts) took
-priority and this got deprioritized without the contract being updated to say so -- caught by a
-code review that flagged the resulting contract/implementation divergence. The shape below is
-the intended design, not a shipped one. Building it is a separate follow-up (SOH cycle detection
-+ `soh_estimate` table reads + a new route + a frontend SOH trend chart), not a small fix.
+**Status: implemented 2026-08-15.** Returns the derived SOH estimate trend (see
+`docs/planning/soh_methodology.md`, including that same day's correction to the fallback
+formula -- the originally-documented SOC-delta-against-nameplate method was mathematically
+circular and would always report ~100% regardless of actual battery condition; the shipped
+method uses the delta in `current_energy_kwh` between a cycle's start/end snapshots instead,
+per `backend/src/app/services/soh.py`'s docstring).
 
-Returns the derived SOH estimate trend (see `docs/planning/soh_methodology.md`).
+Read-only: new estimates are detected and persisted as a side effect of `POST /api/refresh`
+(only on a live fetch, not a cache hit -- see `app/api/refresh.py`'s
+`_record_soh_estimates_if_any`), by scanning `car_snapshot` history for newly-completed
+full-charge cycles not already in `soh_estimate`. This route just reads what's stored.
 
 **Response 200:**
 ```json
 {
   "estimates": [
-    { "computed_at": "2026-08-01T00:00:00Z", "soh_pct": 98.2, "usable_kwh_estimate": 60.9, "basis": "full_charge_cycle" }
+    { "computed_at": "2026-08-01T00:00:00Z", "soh_pct": 98.2, "usable_kwh_estimate": 60.9, "basis": "current_energy_kwh_delta" }
   ],
   "nameplate_usable_kwh": 62.1
 }
 ```
 
-If no full-charge cycle has been observed yet, `estimates` is an empty array — frontend must handle this (show "not enough data yet", not an error).
+`estimates` is ordered most-recent-first (`computed_at` descending), same convention as
+`/api/history` -- the frontend reverses it to chronological order for charting, same as it
+already does for `/api/history`'s snapshots.
+
+If no full-charge cycle has been observed yet, `estimates` is an empty array — frontend must
+handle this (show "not enough data yet", not an error). Per `soh_methodology.md`'s known
+limitations, the frontend should also treat fewer than 2-3 estimates as "not enough data yet"
+even once `estimates` is non-empty, since a single data point is noise, not signal -- this
+gating is a frontend display decision, not something the API suppresses.
 
 ---
 
@@ -295,11 +305,26 @@ Field notes:
 
 ## GET /api/latest/battery-usage
 
-Battery usage statistics derived from the vehicle's self-reported charging-session data
-(`rvsChargeStatus`, part of the charging-management response already fetched every refresh --
-no extra live SAIC call). This is a genuine data source, distinct from the derived SOH estimate
-in `soh_methodology.md`: the vehicle self-reports these figures rather than us computing them
-from observed history.
+Battery usage statistics primarily sourced from the vehicle's self-reported charging-session
+data (`rvsChargeStatus`, part of the charging-management response already fetched every
+refresh -- no extra live SAIC call).
+
+**2026-08-15 correction:** in practice, this vehicle's SAIC account has *never* reported
+`powerUsageOfDay`, `powerUsageSinceLastCharge`, `lastChargeEndingPower`, or `totalBatteryCapacity`
+-- confirmed null across every stored snapshot since account setup, including while actively
+charging, and a live test of the SAIC API's alternate `get_vehicle_charging_status` endpoint
+(unused elsewhere in this app) failed outright rather than supplying the missing data. This
+appears to be a genuine gap in what the SAIC backend pushes for this vehicle/market, not a
+decode bug -- see `docs/planning/decisions_log.md`. Each of these fields now has a **history-derived
+fallback**, computed from `car_snapshot` history when the vehicle itself reports `null`: a
+SOC-delta x capacity estimate, directional not a true independent energy measurement -- the same
+*spirit* as the SOH estimate in `soh_methodology.md`, but **not the same technique**. SOH's own
+2026-08-15 correction found that exact SOC-delta-against-nameplate formula circular for SOH's
+purposes and replaced it with a `current_energy_kwh` delta instead (see `soh.py`); that fix
+doesn't apply here since this fallback isn't estimating capacity degradation, just a session's
+energy delta against a capacity figure that's already known, so there's no equivalent
+circularity. `current_energy_kwh` is the one field confirmed to reliably come from the vehicle
+(`realtimePower`) and has no fallback.
 
 **Response 200:**
 ```json
@@ -312,7 +337,8 @@ from observed history.
     "last_charge_added_kwh": 38.4,
     "current_energy_kwh": 34.6,
     "mileage_today_km": 21.3,
-    "mileage_since_last_charge_km": 143.7
+    "mileage_since_last_charge_km": 143.7,
+    "estimated_fields": []
   }
 }
 ```
@@ -332,9 +358,38 @@ energy content -- despite the misleading raw field name, this is confirmed (via
 not an instantaneous power/rate figure.
 `mileage_today_km`/`mileage_since_last_charge_km` are `mileageOfDay`/`mileageSinceLastCharge` raw
 / 10.0, validated `0 <= raw <= 65535` (same inclusive-range pattern already used elsewhere in
-`saic_client.py`). Every field individually nullable. Decoded on-demand from `raw_json` in
-`backend/src/app/services/battery_usage.py` -- no schema change, no extra live SAIC call, no
-historical storage.
+`saic_client.py`). Every field individually nullable.
+
+**History-derived fallback** (`backend/src/app/services/battery_usage.py`'s
+`compute_derived_battery_usage`, called from `backend/src/app/api/battery_usage.py`): applies
+independently to each of `total_battery_capacity_kwh`, `power_usage_today_kwh`,
+`power_usage_since_last_charge_kwh`, `last_charge_added_kwh`, `mileage_today_km`, and
+`mileage_since_last_charge_km` -- only when the vehicle-reported value for that specific field is
+`null`. `current_energy_kwh` never falls back (see above).
+- `total_battery_capacity_kwh` falls back to `app_settings.battery_nameplate_kwh` directly.
+- `power_usage_today_kwh` sums SOC *decreases* between consecutive `car_snapshot` rows (soc_pct
+  column) whose later timestamp falls on the server's local calendar day, x effective capacity.
+  Increases (charging) are ignored, not netted -- this approximates "energy used driving today",
+  matching the vehicle stat's apparent semantics.
+- `mileage_today_km` is the latest known `odometer_km` minus the first `odometer_km` recorded
+  on today's local calendar day.
+- A "last completed charge cycle" is detected by scanning `car_snapshot.is_charging` for a
+  `True -> False` transition; the last `True` row is treated as the charge's end point (odometer
+  gaps between refreshes mean the true end SOC may be slightly higher -- same caveat as SOH's
+  cycle detection). If no completed cycle exists in the queried window (e.g. still mid-charge,
+  as observed 2026-08-15), `last_charge_added_kwh`, `power_usage_since_last_charge_kwh`, and
+  `mileage_since_last_charge_km` all stay `null` rather than guessing.
+  - `last_charge_added_kwh` = (end SOC - start SOC) x effective capacity, only if positive.
+  - `power_usage_since_last_charge_kwh` = summed SOC decreases from the charge's end point to now.
+  - `mileage_since_last_charge_km` = latest odometer minus odometer at the charge's end point.
+- Effective capacity is `total_battery_capacity_kwh` (after its own fallback above is applied),
+  so all derived kWh figures stay internally consistent with each other.
+- Queries the last 30 days of `car_snapshot` history (same default window as `/api/history`).
+
+`estimated_fields` lists which field names (from the six above) were filled by the history
+fallback rather than the vehicle's own report -- empty when the vehicle reports everything
+itself. The frontend must visibly flag any field named here as an estimate (not hide the
+distinction), same spirit as the SOH estimate's "must never present as authoritative" rule.
 
 **Response 404:** No snapshot exists yet (same as `/api/latest`).
 

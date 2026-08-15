@@ -111,7 +111,14 @@ export interface AdvancedResponse {
   advanced: AdvancedInfo;
 }
 
-/** Shape of GET /api/latest/battery-usage's `battery_usage` object. Fixed, known field list per api_contract.md. */
+/**
+ * Shape of GET /api/latest/battery-usage's `battery_usage` object. Fixed, known field list
+ * per api_contract.md.
+ *
+ * `estimated_fields` lists which of the other field names (by key) were filled by the
+ * history-derived fallback rather than the vehicle's own report, per the 2026-08-15 contract
+ * correction -- the UI must visibly flag those as estimates, not hide the distinction.
+ */
 export interface BatteryUsage {
   total_battery_capacity_kwh: number | null;
   power_usage_today_kwh: number | null;
@@ -120,11 +127,29 @@ export interface BatteryUsage {
   current_energy_kwh: number | null;
   mileage_today_km: number | null;
   mileage_since_last_charge_km: number | null;
+  estimated_fields: string[];
 }
 
 export interface BatteryUsageResponse {
   fetched_at: string;
   battery_usage: BatteryUsage;
+}
+
+/**
+ * One entry in GET /api/soh's `estimates` array, most-recent-first (same convention as
+ * /api/history) -- see api_contract.md's "implemented 2026-08-15" note. `basis` is currently
+ * always "current_energy_kwh_delta" (soh_methodology.md's shipped v1 method).
+ */
+export interface SohEstimateItem {
+  computed_at: string;
+  soh_pct: number;
+  usable_kwh_estimate: number;
+  basis: string;
+}
+
+export interface SohResponse {
+  estimates: SohEstimateItem[];
+  nameplate_usable_kwh: number;
 }
 
 /** Error response shape used by all backend error responses (400/404/502/etc). */

@@ -25,6 +25,7 @@ describe("BatteryUsagePage", () => {
         current_energy_kwh: 34.6,
         mileage_today_km: 21.3,
         mileage_since_last_charge_km: 143.7,
+        estimated_fields: [],
       },
     });
 
@@ -40,6 +41,35 @@ describe("BatteryUsagePage", () => {
     expect(screen.getByText("34.6 kWh")).toBeTruthy();
     expect(screen.getByText("21.3 km")).toBeTruthy();
     expect(screen.getByText("143.7 km")).toBeTruthy();
+    // Nothing estimated -- no "estimated" note rendered anywhere.
+    expect(screen.queryByText(/estimated/i)).toBeNull();
+  });
+
+  it("flags history-derived fields as estimates, per the 2026-08-15 contract correction", async () => {
+    vi.mocked(api.getBatteryUsage).mockResolvedValue({
+      fetched_at: "2026-08-15T18:01:00Z",
+      battery_usage: {
+        total_battery_capacity_kwh: 62.1,
+        power_usage_today_kwh: 0,
+        power_usage_since_last_charge_kwh: 6.21,
+        last_charge_added_kwh: 37.26,
+        current_energy_kwh: null,
+        mileage_today_km: 0,
+        mileage_since_last_charge_km: 20,
+        estimated_fields: [
+          "total_battery_capacity_kwh",
+          "power_usage_since_last_charge_kwh",
+          "last_charge_added_kwh",
+          "mileage_since_last_charge_km",
+        ],
+      },
+    });
+
+    render(<BatteryUsagePage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/estimated from observed history/i).length).toBe(4);
+    });
   });
 
   it("renders placeholders for an all-null battery_usage response without crashing", async () => {
@@ -53,6 +83,7 @@ describe("BatteryUsagePage", () => {
         current_energy_kwh: null,
         mileage_today_km: null,
         mileage_since_last_charge_km: null,
+        estimated_fields: [],
       },
     });
 

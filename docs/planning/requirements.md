@@ -164,8 +164,8 @@ The dashboard displays the following, sourced from the SAIC API:
 -   Every successful refresh (manual or scheduled) writes a snapshot row
     to local SQLite storage.
 
--   The dashboard includes trend charts: SOC over time, range over time,
-    and SOH estimate over time.
+-   The dashboard includes trend charts: SOC over time, range over time, 12V battery voltage
+    over time, and SOH estimate over time.
 
 -   Raw API responses are stored alongside parsed fields to allow
     re-parsing if field mappings need correction later (the API is
@@ -197,6 +197,27 @@ The dashboard displays the following, sourced from the SAIC API:
 -   Configure minimum refresh interval floor (advanced/optional).
 
 -   Configure vehicle nameplate battery capacity (for SOH calculation).
+
+4.8 Advanced Info & Battery Usage (added beyond original v1.1 scope, 2026-08-15)
+
+-   **Advanced Info page** (`GET /api/latest/advanced`): every other decodable field from the
+    vehicle's raw status/charging responses not already covered by 4.4's core dashboard --
+    doors/locks/windows, tyre-adjacent diagnostics, charging-session raw fields, GPS/journey
+    info when present, and a catch-all `raw_undecoded` map for anything not yet given a typed
+    field. Added because the raw SAIC responses carry far more than the original core-dashboard
+    list, and it was cheap to surface once the decode groundwork existed.
+-   **Battery Usage page** (`GET /api/latest/battery-usage`): power-usage-today,
+    power-usage-since-last-charge, last-charge-added, current-energy, and mileage-today /
+    since-last-charge figures. Primarily the vehicle's own self-reported charging-session
+    stats; per the 2026-08-15 correction in `docs/architecture/api_contract.md`, this
+    particular vehicle's SAIC account has never reported most of these, so unreported fields
+    fall back to a history-derived estimate (flagged via `estimated_fields` in the response) --
+    see `docs/planning/decisions_log.md`.
+
+These aren't a scope change to the goals in Section 2 -- still single-user, read-only,
+localhost-only monitoring -- just additional surfaced detail. `docs/architecture/api_contract.md`
+is the definitive, current interface; treat any conflict between it and this section as this
+section being stale, not the contract.
 
 5\. Non-Functional Requirements
 

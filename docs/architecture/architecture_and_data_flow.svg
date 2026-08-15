@@ -40,20 +40,24 @@
 
   <!-- Backend box -->
   <rect x="480" y="165" width="330" height="220" rx="10" fill="#eafbf2" stroke="#5bbf90" stroke-width="1.5"/>
-  <text x="645" y="192" text-anchor="middle" font-size="15" font-weight="700" fill="#1c2333">FastAPI Backend</text>
-  <text x="645" y="212" text-anchor="middle" font-size="11" fill="#4b5468">localhost:8000</text>
+  <text x="645" y="188" text-anchor="middle" font-size="15" font-weight="700" fill="#1c2333">FastAPI Backend</text>
+  <text x="645" y="206" text-anchor="middle" font-size="11" fill="#4b5468">localhost:8000</text>
 
-  <rect x="498" y="226" width="294" height="30" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
-  <text x="645" y="246" text-anchor="middle" font-size="11.5" fill="#1c2333">POST /api/refresh — rate-limit gate (30 min floor)</text>
+  <rect x="498" y="218" width="294" height="26" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
+  <text x="645" y="235" text-anchor="middle" font-size="11" fill="#1c2333">POST /api/refresh — rate-limit gate (30 min floor)</text>
 
-  <rect x="498" y="262" width="294" height="30" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
-  <text x="645" y="282" text-anchor="middle" font-size="11.5" fill="#1c2333">GET /api/latest · /api/history · /api/soh</text>
+  <rect x="498" y="250" width="294" height="26" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
+  <text x="645" y="267" text-anchor="middle" font-size="11" fill="#1c2333">GET /api/latest (+ /advanced, /battery-usage)</text>
 
-  <rect x="498" y="298" width="294" height="30" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
-  <text x="645" y="318" text-anchor="middle" font-size="11.5" fill="#1c2333">GET/PUT /api/settings</text>
+  <rect x="498" y="282" width="294" height="26" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
+  <text x="645" y="299" text-anchor="middle" font-size="11" fill="#1c2333">GET /api/history · GET/PUT /api/settings</text>
 
-  <rect x="498" y="334" width="294" height="30" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
-  <text x="645" y="354" text-anchor="middle" font-size="11.5" fill="#1c2333">SOH estimation job (full-charge-cycle detection)</text>
+  <rect x="498" y="314" width="294" height="26" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
+  <text x="645" y="331" text-anchor="middle" font-size="11" fill="#1c2333">GET /api/soh — reads persisted estimates</text>
+
+  <rect x="498" y="346" width="294" height="30" rx="6" fill="#ffffff" stroke="#bfe3cf"/>
+  <text x="645" y="362" text-anchor="middle" font-size="10.5" fill="#1c2333">Refresh side effect: SOH cycle detection (persisted).</text>
+  <text x="645" y="374" text-anchor="middle" font-size="10.5" fill="#1c2333">Battery-usage fallback: computed per GET, not stored.</text>
 
   <!-- SQLite box -->
   <rect x="860" y="165" width="240" height="220" rx="10" fill="#fdeee8" stroke="#e0a48c" stroke-width="1.5"/>

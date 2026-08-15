@@ -19,8 +19,8 @@ Full context lives in `docs/`:
 - `docs/architecture/architecture_and_data_flow.svg` — visual architecture diagram
 
 **Before writing code, check `docs/planning/decisions_log.md` for open items.** If your task
-touches an open item (currently: secondary iSmart account status, map/location view scope),
-stop and ask the user rather than assuming an answer.
+touches an open item (currently: map/location view scope), stop and ask the user rather than
+assuming an answer.
 
 ## Core behavioral rules (apply always)
 
@@ -121,6 +121,8 @@ in the contract doc.
 ```
 jb_mgs5_dashboard/
 ├── CLAUDE.md                          (this file)
+├── README.md                          (setup + scripts/ quick start)
+├── scripts/                           (start.sh / stop.sh / restart.sh -- local dev services)
 ├── docs/
 │   ├── planning/
 │   │   ├── requirements.md
@@ -135,8 +137,10 @@ jb_mgs5_dashboard/
 │   ├── pyproject.toml
 │   ├── .env.example
 │   ├── src/app/
-│   │   ├── api/            (FastAPI route handlers)
-│   │   ├── services/       (SAIC client wrapper, SOH calc, rate-limit logic)
+│   │   ├── api/            (FastAPI route handlers: refresh, latest, advanced, battery_usage,
+│   │   │                    history, settings, soh)
+│   │   ├── services/       (SAIC client wrapper, SOH cycle detection, battery-usage history
+│   │   │                    fallback, rate-limit logic)
 │   │   ├── models/         (Pydantic schemas matching api_contract.md)
 │   │   └── db/              (SQLite access, schema per data_model.md)
 │   └── tests/
@@ -146,17 +150,22 @@ jb_mgs5_dashboard/
 └── frontend/
     ├── package.json
     ├── src/
-    │   ├── components/      (dashboard cards, refresh button, settings panel)
+    │   ├── components/      (dashboard cards, refresh button, settings panel, advanced-info
+    │   │                    and battery-usage pages)
     │   ├── pages/
     │   ├── hooks/            (data fetching hooks matching api_contract.md)
     │   ├── lib/               (API client, formatting helpers)
-    │   └── charts/           (Recharts trend components)
+    │   └── charts/           (Recharts trend components, incl. SOH trend)
     └── tests/
 ```
 
 ## Current status / next steps
 
-See `docs/planning/decisions_log.md` "Open" table for what's blocking full implementation.
-As of repo creation: secondary iSmart account setup is pending confirmation, and
-map/location view scope is undecided. Backend/frontend scaffolding and contract-based mocked
-development can proceed without these; live SAIC integration testing should not.
+Live SAIC integration is working end-to-end against the owner's secondary iSmart account (see
+`docs/planning/decisions_log.md`'s Resolved table). Implemented: manual + scheduled refresh,
+`/api/latest` (+ `/advanced`, `/battery-usage`), `/api/history`, `/api/settings`, and `/api/soh`
+(full-charge-cycle SOH estimation, persisted at refresh time). `scripts/start.sh` /
+`stop.sh` / `restart.sh` run both services locally for testing (see `README.md`).
+
+See `docs/planning/decisions_log.md`'s "Open" table for what's still blocking full v1 scope —
+currently just the map/location view (deferred to v2 regardless).

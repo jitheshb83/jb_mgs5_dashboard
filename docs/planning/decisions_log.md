@@ -17,12 +17,14 @@ Anything not listed here as "resolved" should be treated as open — ask, don't 
 | 2026-08-12 | Refresh model | Manual refresh button (primary). Optional scheduled refresh, off by default, frontend-timer-driven only (stops when tab closes) — no background daemon. |
 | 2026-08-12 | SOH approach | No SOH field exists in the SAIC cloud API. SOH is a derived/directional estimate from full-charge-cycle tracking, clearly labeled as an estimate in the UI. True SOH requires a separate OBD-II dongle (e.g. Car Scanner app) — out of scope for this project. |
 | 2026-08-12 | Map / vehicle location view | Deferred to v2. Not built in v1. `latitude`/`longitude` columns remain in the schema and are returned as null/omitted by the API in the meantime — no rework needed to add the view later. |
+| 2026-08-15 | Secondary iSmart account | Confirmed created and active — live refreshes against the real SAIC API have been working end-to-end since. Dashboard's `.env` credentials point to this secondary account, never the owner's primary daily-driver account. |
+| 2026-08-15 | Battery-usage vehicle-reported fields are unreliable for this account | `rvsChargeStatus.powerUsageOfDay`/`powerUsageSinceLastCharge`/`lastChargeEndingPower`/`totalBatteryCapacity` are confirmed `null` in every stored snapshot since account setup, including while actively charging — a live test of the SAIC API's alternate `get_vehicle_charging_status` endpoint failed outright rather than supplying the missing data. Treated as a genuine SAIC-backend gap for this vehicle/market, not a decode bug. Fix: `GET /api/latest/battery-usage` falls back to estimating these fields from `car_snapshot` history (see `api_contract.md`'s 2026-08-15 correction), flagged via the response's `estimated_fields` list. |
+| 2026-08-15 | SOH kWh-delivered method | The originally-documented v1 fallback (SOC delta scaled by the nameplate constant) is mathematically circular — it always yields ~100% SOH regardless of real battery condition. Caught before implementation. Fixed method: use the delta in the vehicle's own `current_energy_kwh` (`realtimePower`) between a cycle's start/end snapshots instead — see `soh_methodology.md`'s 2026-08-15 correction and `backend/src/app/services/soh.py`. |
 
 ## Open — do not assume, ask first
 
-| Item | Status | Notes |
-|---|---|---|
-| Secondary iSmart account | Instructions provided to owner (see below), not yet confirmed created/active | Dashboard's `.env` credentials must point to a **secondary** iSmart account, never the owner's primary daily-driver account, or the primary mobile app will be logged out. Do not proceed with live API integration testing until this is confirmed done. |
+Nothing currently blocking. The only deferred item is the map/location view above (v2, not
+open — already resolved as "not in v1").
 
 ### How to create the secondary iSmart account (reference)
 1. Log out of the iSmart app (Profile → Settings → Log out).
