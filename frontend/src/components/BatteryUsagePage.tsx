@@ -76,6 +76,28 @@ export function BatteryUsagePage({ refreshKey }: BatteryUsagePageProps) {
           })}
           sublabel={estimated.has("mileage_since_last_charge_km") ? estimatedNote : undefined}
         />
+        <StatCard
+          label="Efficiency Today"
+          value={formatNumber(batteryUsage.efficiency_today_kwh_per_100km, {
+            decimals: 1,
+            unit: " kWh/100km",
+          })}
+          sublabel={
+            estimated.has("efficiency_today_kwh_per_100km") ? estimatedNote : "Not vehicle-reported — always calculated."
+          }
+        />
+        <StatCard
+          label="Efficiency Since Last Charge"
+          value={formatNumber(batteryUsage.efficiency_since_last_charge_kwh_per_100km, {
+            decimals: 1,
+            unit: " kWh/100km",
+          })}
+          sublabel={
+            estimated.has("efficiency_since_last_charge_kwh_per_100km")
+              ? estimatedNote
+              : "Not vehicle-reported — always calculated."
+          }
+        />
       </div>
     </div>
   );

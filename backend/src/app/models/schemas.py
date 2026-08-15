@@ -200,6 +200,8 @@ class BatteryUsage(BaseModel):
     current_energy_kwh: float | None = None
     mileage_today_km: float | None = None
     mileage_since_last_charge_km: float | None = None
+    efficiency_today_kwh_per_100km: float | None = None
+    efficiency_since_last_charge_kwh_per_100km: float | None = None
     estimated_fields: list[str] = Field(default_factory=list)
 
 

@@ -338,10 +338,26 @@ circularity. `current_energy_kwh` is the one field confirmed to reliably come fr
     "current_energy_kwh": 34.6,
     "mileage_today_km": 21.3,
     "mileage_since_last_charge_km": 143.7,
+    "efficiency_today_kwh_per_100km": 19.72,
+    "efficiency_since_last_charge_kwh_per_100km": 8.77,
     "estimated_fields": []
   }
 }
 ```
+
+**2026-08-16 addition:** `efficiency_today_kwh_per_100km` / `efficiency_since_last_charge_kwh_per_100km`
+answer the owner's follow-up to the range-estimate mixup above -- "can we show actual driving
+efficiency?" They're computed server-side (not left to the frontend) as
+`round(power_usage_kwh / mileage_km * 100, 2)`, using each pair's *already-resolved* value
+(vehicle-reported or history-derived fallback, whichever `power_usage_today_kwh`/
+`mileage_today_km` and their since-last-charge counterparts ended up as). `null` if either
+input is `null`, or if the mileage is `<= 0` (division by zero / no distance travelled --
+distinct from a `0` mileage yielding a nonsensical infinite or undefined efficiency figure).
+Not vehicle-reported at all -- there is no such field in the SAIC API (checked: `rvsChargeStatus`
+has no consumption/efficiency field other than `staticEnergyConsumption`, itself unreported for
+this account, same as the other fields in the 2026-08-15 correction above). Always at least as
+uncertain as the more-estimated of its two inputs: **added to `estimated_fields` whenever either
+underlying field name is in `estimated_fields`.**
 
 `total_battery_capacity_kwh` is the vehicle's own self-reported capacity (raw `totalBatteryCapacity`
 / 10.0) -- distinct from `app_settings.battery_nameplate_kwh`, which is the owner-configured
