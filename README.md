@@ -66,7 +66,7 @@ scripts/start.sh
 ```
 
 - Backend: `http://localhost:8000` (API docs at `/docs`)
-- Frontend: `http://localhost:5173` ← **open this in your browser**
+- Frontend: `http://localhost:8001` ← **open this in your browser**
 
 ```bash
 scripts/stop.sh      # stop both
@@ -77,7 +77,7 @@ Each of the three also accepts `--backend-only` or `--frontend-only`. Logs land 
 (gitignored) if something looks wrong — check `.run/backend.log` first for API/credential
 issues. Each start/restart prints which port it actually used per service.
 
-**Custom ports** (default 8000 / 5173, e.g. if those are already taken):
+**Custom ports** (default 8000 / 8001, e.g. if those are already taken):
 
 ```bash
 BACKEND_PORT=9000 FRONTEND_PORT=3000 scripts/start.sh
@@ -98,14 +98,14 @@ uv run uvicorn app.main:app --app-dir src --port 8000
 # frontend, in a second terminal
 cd frontend
 npm install
-npm run dev
+npm run dev   # frontend/vite.config.ts defaults this to port 8001 too, no flag needed
 ```
 
 </details>
 
 ## Using the dashboard
 
-1. Open `http://localhost:5173`.
+1. Open `http://localhost:8001`.
 2. Click **Refresh** to pull live data from the vehicle. The backend enforces a 30-minute
    minimum gap between real calls to the SAIC API (protects the 12V battery from drain) — a
    refresh requested sooner just returns the last cached snapshot with its timestamp, no error.

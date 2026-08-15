@@ -17,9 +17,9 @@ from app.models.schemas import ErrorResponse
 
 
 def _dev_origins(frontend_port: str) -> list[str]:
-    """Vite dev server origin -- defaults to its standard port (5173), but must track
-    FRONTEND_PORT (see config.py) so a custom port (e.g. via `scripts/start.sh`) doesn't get
-    silently blocked by CORS."""
+    """Vite dev server origin -- defaults to this project's configured port (8001, see
+    frontend/vite.config.ts and scripts/lib.sh), but must track FRONTEND_PORT (see config.py)
+    so a custom port (e.g. via `scripts/start.sh`) doesn't get silently blocked by CORS."""
     return [f"http://localhost:{frontend_port}", f"http://127.0.0.1:{frontend_port}"]
 
 

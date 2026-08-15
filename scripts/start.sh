@@ -4,7 +4,7 @@
 # PIDs to .run/*.pid (gitignored). Re-running this is safe -- an already-running service is
 # left alone rather than double-started.
 #
-# Ports default to 8000 (backend) / 5173 (frontend) and are overridable:
+# Ports default to 8000 (backend) / 8001 (frontend) and are overridable:
 #   BACKEND_PORT=9000 FRONTEND_PORT=3000 scripts/start.sh
 # Each service is told the other's port (backend's CORS allow-list, frontend's API base URL)
 # so a non-default port never silently breaks frontend<->backend communication.

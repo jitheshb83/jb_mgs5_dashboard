@@ -29,7 +29,10 @@ def get_settings() -> Settings:
         # Vite dev server's port -- only used to build the CORS allow-list (main.py). Not an
         # app setting so much as a "what port is the other local process on" fact; set by
         # scripts/start.sh to match whatever FRONTEND_PORT it actually started the frontend on.
-        frontend_port=os.environ.get("FRONTEND_PORT", "5173"),
+        # Default (8001) matches both scripts/lib.sh's FRONTEND_PORT default and
+        # frontend/vite.config.ts's `server.port`, so a fully manual run (no scripts, no env
+        # vars set) still has both sides agree.
+        frontend_port=os.environ.get("FRONTEND_PORT", "8001"),
     )
 
 
