@@ -48,22 +48,18 @@ Grab the [latest release](https://github.com/jitheshb83/jb_mgs5_dashboard/releas
 ```bash
 git clone https://github.com/jitheshb83/jb_mgs5_dashboard.git
 cd jb_mgs5_dashboard
-
-# Backend: install deps and configure credentials
-cd backend
-uv sync
-cp .env.example .env   # then edit .env: fill in your SECONDARY account's SAIC_USERNAME/PASSWORD
-cd ..
-
-# Frontend: install deps
-cd frontend
-npm install
-cd ..
+cp backend/.env.example backend/.env
+# now edit backend/.env: fill in your SECONDARY account's SAIC_USERNAME/SAIC_PASSWORD
 ```
+
+That's the only manual step — `scripts/start.sh` (below) installs both the backend's Python
+dependencies (`uv sync`) and the frontend's npm packages the first time you run it, so a fresh
+clone works without any other setup.
 
 ## Running it
 
-The easy way — starts both services in the background:
+The easy way — starts both services in the background, installing dependencies first if this
+is a fresh checkout:
 
 ```bash
 scripts/start.sh
@@ -86,10 +82,14 @@ issues.
 
 ```bash
 # backend
-cd backend && uv run uvicorn app.main:app --app-dir src --port 8000
+cd backend
+uv sync
+uv run uvicorn app.main:app --app-dir src --port 8000
 
 # frontend, in a second terminal
-cd frontend && npm run dev
+cd frontend
+npm install
+npm run dev
 ```
 
 </details>

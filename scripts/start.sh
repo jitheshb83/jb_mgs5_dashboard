@@ -16,6 +16,14 @@ start_backend() {
     echo "Backend already running (pid $(cat "$BACKEND_PID_FILE")) at http://localhost:$BACKEND_PORT"
     return
   fi
+  # `uv run` would auto-sync anyway, but doing it here -- in the foreground, before
+  # backgrounding anything -- means a broken/missing dependency install fails loudly and
+  # immediately instead of as a buried line in backend.log (see frontend's equivalent below,
+  # which doesn't have that auto-sync safety net at all).
+  # --extra dev matters: backend/pyproject.toml's dev tools (pytest/ruff/mypy) live in an
+  # optional-dependencies group that plain `uv sync` silently uninstalls if already present.
+  echo "Syncing backend dependencies (uv sync --extra dev)..."
+  (cd "$REPO_ROOT/backend" && uv sync --extra dev)
   echo "Starting backend..."
   (
     cd "$REPO_ROOT/backend"
@@ -39,6 +47,14 @@ start_frontend() {
   if is_running "$FRONTEND_PID_FILE"; then
     echo "Frontend already running (pid $(cat "$FRONTEND_PID_FILE")) at http://localhost:$FRONTEND_PORT"
     return
+  fi
+  # Unlike `uv run`, `npm run dev` does NOT auto-install missing dependencies -- on a fresh
+  # checkout (node_modules doesn't exist, it's gitignored) it fails inside the background
+  # process with a cryptic "vite: command not found" that only shows up in frontend.log.
+  # Installing here, in the foreground, surfaces that clearly instead.
+  if [[ ! -x "$REPO_ROOT/frontend/node_modules/.bin/vite" ]]; then
+    echo "Installing frontend dependencies (npm install)..."
+    (cd "$REPO_ROOT/frontend" && npm install)
   fi
   echo "Starting frontend..."
   (
