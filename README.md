@@ -48,29 +48,25 @@ Grab the [latest release](https://github.com/jitheshb83/jb_mgs5_dashboard/releas
 ```bash
 git clone https://github.com/jitheshb83/jb_mgs5_dashboard.git
 cd jb_mgs5_dashboard
-
-# Backend: install deps and configure credentials
-cd backend
-uv sync
-cp .env.example .env   # then edit .env: fill in your SECONDARY account's SAIC_USERNAME/PASSWORD
-cd ..
-
-# Frontend: install deps
-cd frontend
-npm install
-cd ..
+cp backend/.env.example backend/.env
+# now edit backend/.env: fill in your SECONDARY account's SAIC_USERNAME/SAIC_PASSWORD
 ```
+
+That's the only manual step — `scripts/start.sh` (below) installs both the backend's Python
+dependencies (`uv sync`) and the frontend's npm packages the first time you run it, so a fresh
+clone works without any other setup.
 
 ## Running it
 
-The easy way — starts both services in the background:
+The easy way — starts both services in the background, installing dependencies first if this
+is a fresh checkout:
 
 ```bash
 scripts/start.sh
 ```
 
 - Backend: `http://localhost:8000` (API docs at `/docs`)
-- Frontend: `http://localhost:5173` ← **open this in your browser**
+- Frontend: `http://localhost:8001` ← **open this in your browser**
 
 ```bash
 scripts/stop.sh      # stop both
@@ -79,24 +75,37 @@ scripts/restart.sh   # stop + start (handy after pulling changes or editing .env
 
 Each of the three also accepts `--backend-only` or `--frontend-only`. Logs land in `.run/`
 (gitignored) if something looks wrong — check `.run/backend.log` first for API/credential
-issues.
+issues. Each start/restart prints which port it actually used per service.
+
+**Custom ports** (default 8000 / 8001, e.g. if those are already taken):
+
+```bash
+BACKEND_PORT=9000 FRONTEND_PORT=3000 scripts/start.sh
+```
+
+Both services are told the other's port automatically (backend's CORS allow-list, frontend's
+API base URL), so a non-default port never silently breaks them talking to each other.
 
 <details>
 <summary>Running backend/frontend manually instead</summary>
 
 ```bash
 # backend
-cd backend && uv run uvicorn app.main:app --app-dir src --port 8000
+cd backend
+uv sync
+uv run uvicorn app.main:app --app-dir src --port 8000
 
 # frontend, in a second terminal
-cd frontend && npm run dev
+cd frontend
+npm install
+npm run dev   # frontend/vite.config.ts defaults this to port 8001 too, no flag needed
 ```
 
 </details>
 
 ## Using the dashboard
 
-1. Open `http://localhost:5173`.
+1. Open `http://localhost:8001`.
 2. Click **Refresh** to pull live data from the vehicle. The backend enforces a 30-minute
    minimum gap between real calls to the SAIC API (protects the 12V battery from drain) — a
    refresh requested sooner just returns the last cached snapshot with its timestamp, no error.

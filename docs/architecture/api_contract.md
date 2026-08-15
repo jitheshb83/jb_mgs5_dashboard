@@ -338,10 +338,26 @@ circularity. `current_energy_kwh` is the one field confirmed to reliably come fr
     "current_energy_kwh": 34.6,
     "mileage_today_km": 21.3,
     "mileage_since_last_charge_km": 143.7,
+    "efficiency_today_kwh_per_100km": 19.72,
+    "efficiency_since_last_charge_kwh_per_100km": 8.77,
     "estimated_fields": []
   }
 }
 ```
+
+**2026-08-16 addition:** `efficiency_today_kwh_per_100km` / `efficiency_since_last_charge_kwh_per_100km`
+answer the owner's follow-up to the range-estimate mixup above -- "can we show actual driving
+efficiency?" They're computed server-side (not left to the frontend) as
+`round(power_usage_kwh / mileage_km * 100, 2)`, using each pair's *already-resolved* value
+(vehicle-reported or history-derived fallback, whichever `power_usage_today_kwh`/
+`mileage_today_km` and their since-last-charge counterparts ended up as). `null` if either
+input is `null`, or if the mileage is `<= 0` (division by zero / no distance travelled --
+distinct from a `0` mileage yielding a nonsensical infinite or undefined efficiency figure).
+Not vehicle-reported at all -- there is no such field in the SAIC API (checked: `rvsChargeStatus`
+has no consumption/efficiency field other than `staticEnergyConsumption`, itself unreported for
+this account, same as the other fields in the 2026-08-15 correction above). Always at least as
+uncertain as the more-estimated of its two inputs: **added to `estimated_fields` whenever either
+underlying field name is in `estimated_fields`.**
 
 `total_battery_capacity_kwh` is the vehicle's own self-reported capacity (raw `totalBatteryCapacity`
 / 10.0) -- distinct from `app_settings.battery_nameplate_kwh`, which is the owner-configured
@@ -438,6 +454,15 @@ call) and is nullable as a whole (if `basicVehicleStatus` is missing) with every
 individually nullable. Decode semantics (`value > 0` -> locked / open) are confirmed against
 `SAIC-iSmart-API/saic-python-mqtt-gateway`'s published decode logic and Home Assistant
 `device_class` mappings (`lock`: >0 = locked; `door`/`window`: >0 = open) -- not guessed.
+
+**2026-08-16 confirmation:** `range_bms_km` and `range_imcu_km` are two genuinely different
+range concepts, not near-duplicates -- confirmed against a real MGS5, where they read 600 km
+and 461 km respectively at the same SOC. `range_bms_km` (`bmsEstdElecRng`) is a rated/
+theoretical range at the current SOC, not adjusted for actual driving. `range_imcu_km`
+(`imcuVehElecRng`) is the IMCU's adaptive, real-world estimate, and is the one that matches
+what the MG iSmart app/dash typically display -- this also confirms `imcuVehElecRng`'s scaling
+(no `/10`, already km), previously an unverified judgment call (see `saic_client.py`). The
+frontend's `RangeCard` labels these "BMS (rated)" / "IMCU (real-world)" accordingly.
 
 Notes:
 - Any field can be `null` if the SAIC API didn't return it — frontend must render a "—" or similar placeholder, never crash or show `null`/`undefined` literally.

@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# Starts the backend (FastAPI/uvicorn, port 8000) and frontend (Vite dev server, port 5173)
-# for local testing, matching the manual steps in README.md. Both run in the background;
-# logs go to .run/*.log, PIDs to .run/*.pid (gitignored). Re-running this is safe -- an
-# already-running service is left alone rather than double-started.
+# Starts the backend (FastAPI/uvicorn) and frontend (Vite dev server) for local testing,
+# matching the manual steps in README.md. Both run in the background; logs go to .run/*.log,
+# PIDs to .run/*.pid (gitignored). Re-running this is safe -- an already-running service is
+# left alone rather than double-started.
+#
+# Ports default to 8000 (backend) / 8001 (frontend) and are overridable:
+#   BACKEND_PORT=9000 FRONTEND_PORT=3000 scripts/start.sh
+# Each service is told the other's port (backend's CORS allow-list, frontend's API base URL)
+# so a non-default port never silently breaks frontend<->backend communication.
 #
 # Usage: scripts/start.sh [--backend-only|--frontend-only]
 
@@ -13,9 +18,17 @@ MODE="${1:-}"
 
 start_backend() {
   if is_running "$BACKEND_PID_FILE"; then
-    echo "Backend already running (pid $(cat "$BACKEND_PID_FILE")) at http://localhost:$BACKEND_PORT"
+    echo "Backend already running (pid $(cat "$BACKEND_PID_FILE")) on port $BACKEND_PORT -- http://localhost:$BACKEND_PORT"
     return
   fi
+  # `uv run` would auto-sync anyway, but doing it here -- in the foreground, before
+  # backgrounding anything -- means a broken/missing dependency install fails loudly and
+  # immediately instead of as a buried line in backend.log (see frontend's equivalent below,
+  # which doesn't have that auto-sync safety net at all).
+  # --extra dev matters: backend/pyproject.toml's dev tools (pytest/ruff/mypy) live in an
+  # optional-dependencies group that plain `uv sync` silently uninstalls if already present.
+  echo "Syncing backend dependencies (uv sync --extra dev)..."
+  (cd "$REPO_ROOT/backend" && uv sync --extra dev)
   echo "Starting backend..."
   (
     cd "$REPO_ROOT/backend"
@@ -28,25 +41,39 @@ start_backend() {
     else
       echo "Warning: backend/.env not found (copy backend/.env.example and fill in SAIC credentials)." >&2
     fi
+    # So main.py's CORS allow-list matches wherever the frontend actually ends up running,
+    # even if FRONTEND_PORT was overridden -- see config.py's Settings.frontend_port.
+    export FRONTEND_PORT
     nohup uv run uvicorn app.main:app --app-dir src --port "$BACKEND_PORT" \
       > "$BACKEND_LOG" 2>&1 &
     echo $! > "$BACKEND_PID_FILE"
   )
-  echo "Backend starting (pid $(cat "$BACKEND_PID_FILE")), log: $BACKEND_LOG"
+  echo "Backend starting (pid $(cat "$BACKEND_PID_FILE")) on port $BACKEND_PORT, log: $BACKEND_LOG"
 }
 
 start_frontend() {
   if is_running "$FRONTEND_PID_FILE"; then
-    echo "Frontend already running (pid $(cat "$FRONTEND_PID_FILE")) at http://localhost:$FRONTEND_PORT"
+    echo "Frontend already running (pid $(cat "$FRONTEND_PID_FILE")) on port $FRONTEND_PORT -- http://localhost:$FRONTEND_PORT"
     return
+  fi
+  # Unlike `uv run`, `npm run dev` does NOT auto-install missing dependencies -- on a fresh
+  # checkout (node_modules doesn't exist, it's gitignored) it fails inside the background
+  # process with a cryptic "vite: command not found" that only shows up in frontend.log.
+  # Installing here, in the foreground, surfaces that clearly instead.
+  if [[ ! -x "$REPO_ROOT/frontend/node_modules/.bin/vite" ]]; then
+    echo "Installing frontend dependencies (npm install)..."
+    (cd "$REPO_ROOT/frontend" && npm install)
   fi
   echo "Starting frontend..."
   (
     cd "$REPO_ROOT/frontend"
+    # So the frontend calls the backend on whatever port it actually started on, even if
+    # BACKEND_PORT was overridden -- see lib/api.ts's BASE_URL.
+    export VITE_API_BASE_URL="http://localhost:$BACKEND_PORT"
     nohup npm run dev -- --port "$FRONTEND_PORT" > "$FRONTEND_LOG" 2>&1 &
     echo $! > "$FRONTEND_PID_FILE"
   )
-  echo "Frontend starting (pid $(cat "$FRONTEND_PID_FILE")), log: $FRONTEND_LOG"
+  echo "Frontend starting (pid $(cat "$FRONTEND_PID_FILE")) on port $FRONTEND_PORT, log: $FRONTEND_LOG"
 }
 
 case "$MODE" in

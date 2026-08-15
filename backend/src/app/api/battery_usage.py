@@ -22,6 +22,7 @@ from app.models.schemas import BatteryUsage, BatteryUsageResponse, ErrorResponse
 from app.services.battery_usage import (
     SnapshotPoint,
     compute_derived_battery_usage,
+    compute_efficiency_kwh_per_100km,
     decode_battery_usage,
 )
 
@@ -90,9 +91,33 @@ async def latest_battery_usage(
                 fields[name] = derived_value  # type: ignore[literal-required]
                 estimated_fields.append(name)
 
+    efficiency_today = compute_efficiency_kwh_per_100km(
+        fields["power_usage_today_kwh"], fields["mileage_today_km"]
+    )
+    if efficiency_today is not None and (
+        "power_usage_today_kwh" in estimated_fields or "mileage_today_km" in estimated_fields
+    ):
+        estimated_fields.append("efficiency_today_kwh_per_100km")
+
+    efficiency_since_last_charge = compute_efficiency_kwh_per_100km(
+        fields["power_usage_since_last_charge_kwh"], fields["mileage_since_last_charge_km"]
+    )
+    if efficiency_since_last_charge is not None and (
+        "power_usage_since_last_charge_kwh" in estimated_fields
+        or "mileage_since_last_charge_km" in estimated_fields
+    ):
+        estimated_fields.append("efficiency_since_last_charge_kwh_per_100km")
+
     return BatteryUsageResponse(
         fetched_at=parse_fetched_at(row["fetched_at"]),
-        battery_usage=BatteryUsage.model_validate({**fields, "estimated_fields": estimated_fields}),
+        battery_usage=BatteryUsage.model_validate(
+            {
+                **fields,
+                "efficiency_today_kwh_per_100km": efficiency_today,
+                "efficiency_since_last_charge_kwh_per_100km": efficiency_since_last_charge,
+                "estimated_fields": estimated_fields,
+            }
+        ),
     )
 
 

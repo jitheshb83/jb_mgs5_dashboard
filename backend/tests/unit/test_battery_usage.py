@@ -8,7 +8,11 @@ are raw / 10.0, validated 0 <= raw <= 65535.
 
 from __future__ import annotations
 
-from app.services.battery_usage import decode_battery_usage, decode_uncorrected_current_energy_kwh
+from app.services.battery_usage import (
+    compute_efficiency_kwh_per_100km,
+    decode_battery_usage,
+    decode_uncorrected_current_energy_kwh,
+)
 
 
 def _raw(rvs: dict[str, object] | None) -> dict[str, object]:
@@ -105,3 +109,19 @@ def test_decode_uncorrected_current_energy_kwh_out_of_range_is_null() -> None:
 def test_decode_uncorrected_current_energy_kwh_missing_rvs_is_null() -> None:
     raw: dict[str, object] = {"charging_management_data": {"rvsChargeStatus": None}}
     assert decode_uncorrected_current_energy_kwh(raw) is None
+
+
+def test_compute_efficiency_kwh_per_100km() -> None:
+    assert compute_efficiency_kwh_per_100km(4.2, 21.3) == 19.72
+    assert compute_efficiency_kwh_per_100km(12.6, 143.7) == 8.77
+
+
+def test_compute_efficiency_kwh_per_100km_null_when_either_input_missing() -> None:
+    assert compute_efficiency_kwh_per_100km(None, 21.3) is None
+    assert compute_efficiency_kwh_per_100km(4.2, None) is None
+    assert compute_efficiency_kwh_per_100km(None, None) is None
+
+
+def test_compute_efficiency_kwh_per_100km_null_for_zero_or_negative_distance() -> None:
+    assert compute_efficiency_kwh_per_100km(4.2, 0) is None
+    assert compute_efficiency_kwh_per_100km(4.2, -5.0) is None

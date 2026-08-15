@@ -127,6 +127,10 @@ export interface BatteryUsage {
   current_energy_kwh: number | null;
   mileage_today_km: number | null;
   mileage_since_last_charge_km: number | null;
+  /** Not vehicle-reported -- server-computed as power_usage / mileage x 100, per
+   * api_contract.md's 2026-08-16 addition. Null if either input is null or mileage is 0. */
+  efficiency_today_kwh_per_100km: number | null;
+  efficiency_since_last_charge_kwh_per_100km: number | null;
   estimated_fields: string[];
 }
 

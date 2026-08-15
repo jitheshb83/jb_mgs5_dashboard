@@ -215,3 +215,14 @@ def compute_derived_battery_usage(
             )
 
     return result
+
+
+def compute_efficiency_kwh_per_100km(kwh: float | None, km: float | None) -> float | None:
+    """`round(kwh / km * 100, 2)` -- `null` if either input is missing or `km <= 0` (no
+    distance travelled, or bad data), which would otherwise divide by zero or yield a
+    nonsensical figure. See api_contract.md's 2026-08-16 addition: not vehicle-reported (the
+    SAIC API has no consumption/efficiency field), derived from whichever power-usage/mileage
+    values the caller already resolved (vehicle-reported or history-derived fallback)."""
+    if kwh is None or km is None or km <= 0:
+        return None
+    return round(kwh / km * 100, 2)

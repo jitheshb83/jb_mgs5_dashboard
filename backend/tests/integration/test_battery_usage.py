@@ -34,6 +34,9 @@ def test_battery_usage_200_after_a_refresh(client: TestClient, mock_saic_success
     assert battery_usage["last_charge_added_kwh"] == 385.86
     assert battery_usage["mileage_today_km"] == 21.3
     assert battery_usage["mileage_since_last_charge_km"] == 143.7
+    # 42.2 kWh / 21.3 km * 100, 126.61 kWh / 143.7 km * 100.
+    assert battery_usage["efficiency_today_kwh_per_100km"] == 198.12
+    assert battery_usage["efficiency_since_last_charge_kwh_per_100km"] == 88.11
     # Vehicle reported every field itself -- nothing estimated.
     assert battery_usage["estimated_fields"] == []
 
@@ -122,6 +125,12 @@ def test_battery_usage_falls_back_to_history_when_vehicle_reports_null(
     assert battery_usage["power_usage_since_last_charge_kwh"] == 6.21
     # 1620 - 1600 km, since the charge ended.
     assert battery_usage["mileage_since_last_charge_km"] == 20.0
+    # 6.21 kWh / 20.0 km * 100 -- also estimated, since both its inputs are.
+    assert battery_usage["efficiency_since_last_charge_kwh_per_100km"] == 31.05
+    # power_usage_today_kwh and mileage_today_km both derive to 0.0 (no drive today, only
+    # charging) -- 0.0 km distance makes efficiency undefined, so this stays null rather than
+    # being added to estimated_fields (nothing to flag an estimate on top of).
+    assert battery_usage["efficiency_today_kwh_per_100km"] is None
     assert set(battery_usage["estimated_fields"]) == {
         "total_battery_capacity_kwh",
         "power_usage_since_last_charge_kwh",
@@ -129,6 +138,7 @@ def test_battery_usage_falls_back_to_history_when_vehicle_reports_null(
         "mileage_since_last_charge_km",
         "power_usage_today_kwh",
         "mileage_today_km",
+        "efficiency_since_last_charge_kwh_per_100km",
     }
     # current_energy_kwh never falls back -- stays null when the vehicle doesn't report it.
     assert battery_usage["current_energy_kwh"] is None

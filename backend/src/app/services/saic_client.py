@@ -11,7 +11,13 @@ APIs/paths/behavior"):
      confirmed decode logic for SOC, mileage, tyre pressure, battery voltage, and
      electric range.
 
-One field is a judgment call, not independently confirmed -- see range_imcu_km below.
+`imcuVehElecRng`'s scaling (no /10, already km -- same as its sibling `bmsEstdElecRng`) was
+originally a judgment call, not independently confirmed via the reference project. Confirmed
+correct 2026-08-16 against a real MGS5: `range_imcu_km` matched the owner's observed
+"official" MG-app range (460-480 km) almost exactly, while `range_bms_km` read notably higher
+(600 km) at the same SOC -- consistent with `bmsEstdElecRng` being a rated/theoretical range
+(standard-cycle-style, not adjusted for actual driving) vs. `imcuVehElecRng`'s adaptive,
+real-world estimate. See docs/planning/decisions_log.md.
 """
 
 from __future__ import annotations
@@ -152,15 +158,17 @@ def map_to_snapshot_fields(
         fields["doors_json"] = json.dumps(doors)
 
     if chrg is not None:
-        # bmsEstdElecRng (BMS range) is published by saic-python-mqtt-gateway
-        # without any /10 scaling (raw value validated directly as 0-2046 km).
+        # bmsEstdElecRng: BMS-rated range, no /10 scaling (raw value validated directly as
+        # 0-2046 km) -- confirmed via saic-python-mqtt-gateway. A rated/theoretical figure at
+        # the current SOC, not adjusted for actual driving -- runs notably higher than
+        # imcuVehElecRng below (module docstring's 2026-08-16 confirmation: 600 vs 461 km at
+        # the same SOC on a real vehicle).
         if _in_range(chrg.bmsEstdElecRng, 0, 2046):
             fields["range_bms_km"] = float(chrg.bmsEstdElecRng)  # type: ignore[arg-type]
-        # imcuVehElecRng (IMCU range) is NOT used by saic-python-mqtt-gateway, so
-        # its scaling isn't independently confirmed. Judgment call: treated the
-        # same as its sibling field bmsEstdElecRng (same dataclass, same "*ElecRng"
-        # naming convention) -- i.e. already in km, no extra scaling. Flagged in
-        # the implementation report; verify once live vehicle testing is possible.
+        # imcuVehElecRng: IMCU's adaptive, real-world range estimate -- same scaling as its
+        # sibling field bmsEstdElecRng (already km, no extra scaling), confirmed 2026-08-16
+        # against a real MGS5 (matched the owner's observed MG-app range almost exactly; see
+        # module docstring).
         if _in_range(chrg.imcuVehElecRng, 0, 2046):
             fields["range_imcu_km"] = float(chrg.imcuVehElecRng)  # type: ignore[arg-type]
 
