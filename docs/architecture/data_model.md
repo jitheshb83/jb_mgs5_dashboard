@@ -10,8 +10,8 @@ to git — add `backend/data/*.db` to `.gitignore`.
 | id | INTEGER PK | Autoincrement |
 | fetched_at | TIMESTAMP NOT NULL | When this snapshot was retrieved |
 | soc_pct | REAL | State of charge, % |
-| range_bms_km | REAL | BMS-based range estimate |
-| range_imcu_km | REAL | IMCU-based range estimate |
+| range_bms_km | REAL | BMS-based range estimate — rated/theoretical at current SOC, not adjusted for actual driving. Runs notably higher than range_imcu_km (confirmed 2026-08-16 against a real vehicle: 600 vs 461 km at the same SOC) — see decisions_log.md. |
+| range_imcu_km | REAL | IMCU-based range estimate — adaptive, learned from real driving/climate. Matches what MG's iSmart app/dash typically show; confirmed 2026-08-16. |
 | is_charging | BOOLEAN | |
 | charging_current | REAL | Nullable — not always reported |
 | plug_status | TEXT | e.g. "plugged", "unplugged" |

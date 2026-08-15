@@ -439,6 +439,15 @@ individually nullable. Decode semantics (`value > 0` -> locked / open) are confi
 `SAIC-iSmart-API/saic-python-mqtt-gateway`'s published decode logic and Home Assistant
 `device_class` mappings (`lock`: >0 = locked; `door`/`window`: >0 = open) -- not guessed.
 
+**2026-08-16 confirmation:** `range_bms_km` and `range_imcu_km` are two genuinely different
+range concepts, not near-duplicates -- confirmed against a real MGS5, where they read 600 km
+and 461 km respectively at the same SOC. `range_bms_km` (`bmsEstdElecRng`) is a rated/
+theoretical range at the current SOC, not adjusted for actual driving. `range_imcu_km`
+(`imcuVehElecRng`) is the IMCU's adaptive, real-world estimate, and is the one that matches
+what the MG iSmart app/dash typically display -- this also confirms `imcuVehElecRng`'s scaling
+(no `/10`, already km), previously an unverified judgment call (see `saic_client.py`). The
+frontend's `RangeCard` labels these "BMS (rated)" / "IMCU (real-world)" accordingly.
+
 Notes:
 - Any field can be `null` if the SAIC API didn't return it — frontend must render a "—" or similar placeholder, never crash or show `null`/`undefined` literally.
 - `raw_json` (full raw API response) is stored in SQLite for debugging but is **not** included in API responses to the frontend — keep payloads lean.
