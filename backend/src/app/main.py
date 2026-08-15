@@ -15,8 +15,12 @@ from app.config import get_settings, resolve_database_path
 from app.db.database import init_db
 from app.models.schemas import ErrorResponse
 
-# Vite's default dev server origin (frontend/ has no custom port configured).
-_DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+def _dev_origins(frontend_port: str) -> list[str]:
+    """Vite dev server origin -- defaults to its standard port (5173), but must track
+    FRONTEND_PORT (see config.py) so a custom port (e.g. via `scripts/start.sh`) doesn't get
+    silently blocked by CORS."""
+    return [f"http://localhost:{frontend_port}", f"http://127.0.0.1:{frontend_port}"]
 
 
 @asynccontextmanager
@@ -30,7 +34,7 @@ app = FastAPI(title="MGS5 EV Dashboard API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_DEV_ORIGINS,
+    allow_origins=_dev_origins(get_settings().frontend_port),
     allow_methods=["*"],
     allow_headers=["*"],
 )

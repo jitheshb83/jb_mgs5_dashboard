@@ -17,6 +17,7 @@ class Settings:
     saic_password: str | None
     saic_region: str
     database_path: str
+    frontend_port: str
 
 
 def get_settings() -> Settings:
@@ -25,6 +26,10 @@ def get_settings() -> Settings:
         saic_password=os.environ.get("SAIC_PASSWORD") or None,
         saic_region=os.environ.get("SAIC_REGION", "eu"),
         database_path=os.environ.get("DATABASE_PATH", "data/mgs5.db"),
+        # Vite dev server's port -- only used to build the CORS allow-list (main.py). Not an
+        # app setting so much as a "what port is the other local process on" fact; set by
+        # scripts/start.sh to match whatever FRONTEND_PORT it actually started the frontend on.
+        frontend_port=os.environ.get("FRONTEND_PORT", "5173"),
     )
 
 

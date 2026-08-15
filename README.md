@@ -75,7 +75,16 @@ scripts/restart.sh   # stop + start (handy after pulling changes or editing .env
 
 Each of the three also accepts `--backend-only` or `--frontend-only`. Logs land in `.run/`
 (gitignored) if something looks wrong — check `.run/backend.log` first for API/credential
-issues.
+issues. Each start/restart prints which port it actually used per service.
+
+**Custom ports** (default 8000 / 5173, e.g. if those are already taken):
+
+```bash
+BACKEND_PORT=9000 FRONTEND_PORT=3000 scripts/start.sh
+```
+
+Both services are told the other's port automatically (backend's CORS allow-list, frontend's
+API base URL), so a non-default port never silently breaks them talking to each other.
 
 <details>
 <summary>Running backend/frontend manually instead</summary>

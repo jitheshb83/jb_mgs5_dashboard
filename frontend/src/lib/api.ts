@@ -18,7 +18,10 @@ import type {
   ApiErrorBody,
 } from "./types";
 
-export const BASE_URL = "http://localhost:8000";
+// Overridable via VITE_API_BASE_URL (scripts/start.sh sets this to match whatever
+// BACKEND_PORT it actually started the backend on) -- falls back to the default dev port
+// when running `npm run dev` directly without going through the scripts.
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 /** Thrown when the backend returns a non-2xx response. Carries the HTTP status and the contract's {error, detail} body. */
 export class ApiRequestError extends Error {
